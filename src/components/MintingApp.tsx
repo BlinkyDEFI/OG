@@ -69,8 +69,7 @@ export const MintingApp = () => {
           {/* NFT Image */}
           <NFTDisplay 
             imageUrl="https://blinkyonsol.com/wp-content/uploads/2025/04/Blinky-OG-VIP-4K-1.png"
-            title="Blinky OG VIP"
-          />
+                      />
           
           {/* Wallet Connect Button */}
           <WalletStatus connected={wallet.connected} />
