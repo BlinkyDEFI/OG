@@ -91,9 +91,9 @@ export class CandyMachineService {
       console.log('Current SOL balance:', balance.basisPoints.toString());
       
       // Ensure minimum SOL for transaction fees (0.01 SOL = 10,000,000 lamports)
-      const minimumSolRequired = sol(0.01).basisPoints;
-      if (balance.basisPoints < minimumSolRequired) {
-        throw new Error(`Insufficient SOL balance. Need at least 0.01 SOL for transaction fees. Current: ${balance.basisPoints / 1_000_000_000} SOL`);
+      const minimumSolRequired = Number(sol(0.01).basisPoints);
+      if (Number(balance.basisPoints) < minimumSolRequired) {
+        throw new Error(`Insufficient SOL balance. Need at least 0.01 SOL for transaction fees. Current: ${Number(balance.basisPoints) / 1_000_000_000} SOL`);
       }
       
       // Build mint arguments for token payment
@@ -125,7 +125,7 @@ export class CandyMachineService {
 
       // Build transaction with lower compute unit limit to reduce fees
       const builder = transactionBuilder()
-        .add(setComputeUnitLimit(this.umi, { units: 750_000 }))
+        .add(setComputeUnitLimit(this.umi, { units: 400_000 }))
         .add(
           mintV2(this.umi, {
             candyMachine: this.candyMachine.publicKey,
@@ -204,14 +204,14 @@ export class CandyMachineService {
 
     // Check total SOL balance upfront
     const balance = await this.umi.rpc.getBalance(this.umi.identity.publicKey);
-    const estimatedFeePerMint = sol(0.01).basisPoints; // Estimate 0.01 SOL per mint
+    const estimatedFeePerMint = Number(sol(0.01).basisPoints); // Estimate 0.01 SOL per mint
     const totalEstimatedFees = estimatedFeePerMint * mintAmount;
     
-    console.log(`SOL balance: ${balance.basisPoints / 1_000_000_000} SOL`);
+    console.log(`SOL balance: ${Number(balance.basisPoints) / 1_000_000_000} SOL`);
     console.log(`Estimated fees for ${mintAmount} mints: ${totalEstimatedFees / 1_000_000_000} SOL`);
     
-    if (balance.basisPoints < totalEstimatedFees) {
-      throw new Error(`Insufficient SOL for ${mintAmount} mints. Need approximately ${totalEstimatedFees / 1_000_000_000} SOL for fees. Current: ${balance.basisPoints / 1_000_000_000} SOL`);
+    if (Number(balance.basisPoints) < totalEstimatedFees) {
+      throw new Error(`Insufficient SOL for ${mintAmount} mints. Need approximately ${totalEstimatedFees / 1_000_000_000} SOL for fees. Current: ${Number(balance.basisPoints) / 1_000_000_000} SOL`);
     }
 
     for (let i = 0; i < mintAmount; i++) {
