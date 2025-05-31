@@ -1,0 +1,25 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --blinky-dark: #121212;
+    --blinky-darkblue: #1a1a2e;
+  }
+
+  body {
+    @apply bg-blinky-dark;
+  }
+}
+
+@layer utilities {
+  .bg-blinky-dark {
+    background-color: var(--blinky-dark);
+  }
+  
+  .bg-blinky-darkblue {
+    background-color: var(--blinky-darkblue);
+  }
+}

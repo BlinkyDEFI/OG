@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules/
+.yarn/
+.yarn.zip
+
+# Lock files (keep them, do NOT ignore)
+# package-lock.json
+# yarn.lock
+# bun.lockb (ignore only if not using bun or want to keep it)
+
+# Build outputs
+dist/
+dist-ssr/
+
+# Environment variables
+.env
+.env.local
+
+# Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# OS files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Yarn & Bun configs/cache
+.yarnrc.yml
+bun.lockb
+
+# Misc
+components.json
+
+# Vite temp/cache files
+vite.config.ts.timestamp-*.mjs
