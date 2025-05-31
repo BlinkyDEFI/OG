@@ -1,4 +1,3 @@
-
 import { 
   fetchCandyMachine, 
   safeFetchCandyGuard,
@@ -56,7 +55,7 @@ export class CandyMachineService {
       
       console.log('Fetching Candy Guard:', CANDY_GUARD_ID.toString());
       this.candyGuard = await safeFetchCandyGuard(this.umi, umiPublicKey(CANDY_GUARD_ID));
-console.log(this.candyGuard.guards);
+      console.log(this.candyGuard.guards);
      
       console.log('Candy Machine v3 initialized successfully');
       console.log('Items loaded:', this.candyMachine.itemsLoaded);
@@ -67,19 +66,18 @@ console.log(this.candyGuard.guards);
     }
   }
 
+  async mintSingle(): Promise<MintResult> {
+    return this.mint(1);
+  }
+
   async mint(mintAmount: number = 1): Promise<MintResult> {
     if (!this.candyMachine || !this.candyGuard) {
       throw new Error('Candy Machine v3 not initialized');
     }
 
     try {
-      console.log(`Starting mint process for ${mintAmount} NFT(s)`);
+      console.log('Starting single NFT mint process');
       
-      // Calculate total cost for display
-      const totalTokenAmount = Number(TOKEN_AMOUNT) * mintAmount;
-      const costBlinky = totalTokenAmount / 1_000_000;
-      console.log(`Total cost: ${costBlinky} BLINKY tokens`);
-
       // Build mint arguments for token payment
       let mintArgs: Partial<DefaultGuardSetMintArgs> = {};
 
@@ -103,17 +101,14 @@ console.log(this.candyGuard.guards);
         mintArgs.mintLimit = some({ id: mintLimit.id });
       }
 
-      // Build transaction with compute unit instructions
-      let builder = transactionBuilder()
-        .add(setComputeUnitLimit(this.umi, { units: 800_000 }));
+      // Generate a single NFT mint
+      const nftMint = generateSigner(this.umi);
+      console.log('Generating single NFT:', nftMint.publicKey.toString());
 
-      // Add mint instructions for each NFT using mintV2
-      const mintedNfts = [];
-      for (let i = 0; i < mintAmount; i++) {
-        const nftMint = generateSigner(this.umi);
-        console.log(`Generating NFT ${i + 1}/${mintAmount}:`, nftMint.publicKey.toString());
-
-        builder = builder.add(
+      // Build transaction with compute unit instructions for single mint
+      const builder = transactionBuilder()
+        .add(setComputeUnitLimit(this.umi, { units: 800_000 }))
+        .add(
           mintV2(this.umi, {
             candyMachine: this.candyMachine.publicKey,
             nftMint,
@@ -124,13 +119,7 @@ console.log(this.candyGuard.guards);
           })
         );
 
-        mintedNfts.push({
-          mint: nftMint.publicKey,
-          name: 'Blinky OG VIP NFT'
-        });
-      }
-
-      console.log('Sending transaction for wallet approval...');
+      console.log('Sending single NFT transaction for wallet approval...');
       
       // Send transaction with proper configuration
       const result = await builder.sendAndConfirm(this.umi, {
@@ -151,16 +140,19 @@ console.log(this.candyGuard.guards);
         signatureString = 'unknown';
       }
       
-      console.log('NFT mint successful! Signature:', signatureString);
+      console.log('Single NFT mint successful! Signature:', signatureString);
       
       return {
         success: true,
         signature: signatureString,
-        nft: mintedNfts.length === 1 ? mintedNfts[0] : mintedNfts
+        nft: {
+          mint: nftMint.publicKey,
+          name: 'Blinky OG VIP NFT'
+        }
       };
       
     } catch (error: any) {
-      console.error('NFT mint failed:', error);
+      console.error('Single NFT mint failed:', error);
       
       let errorMessage = 'Unknown minting error';
       if (error.message) {
