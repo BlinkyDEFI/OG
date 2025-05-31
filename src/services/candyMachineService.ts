@@ -32,6 +32,13 @@ export interface MintResult {
   error?: string;
 }
 
+export interface MultiMintResult {
+  success: boolean;
+  results: MintResult[];
+  totalMinted: number;
+  errors: string[];
+}
+
 export interface CandyMachineInfo {
   itemsAvailable: number;
   itemsRedeemed: number;
@@ -67,10 +74,10 @@ export class CandyMachineService {
   }
 
   async mintSingle(): Promise<MintResult> {
-    return this.mint(1);
+    return this.mintSingleNFT();
   }
 
-  async mint(mintAmount: number = 1): Promise<MintResult> {
+  private async mintSingleNFT(): Promise<MintResult> {
     if (!this.candyMachine || !this.candyGuard) {
       throw new Error('Candy Machine v3 not initialized');
     }
@@ -166,6 +173,63 @@ export class CandyMachineService {
         error: errorMessage
       };
     }
+  }
+
+  async mint(mintAmount: number = 1): Promise<MultiMintResult> {
+    if (!this.candyMachine || !this.candyGuard) {
+      throw new Error('Candy Machine v3 not initialized');
+    }
+
+    console.log(`Starting multi-mint process for ${mintAmount} NFTs`);
+    
+    const results: MintResult[] = [];
+    const errors: string[] = [];
+    let totalMinted = 0;
+
+    for (let i = 0; i < mintAmount; i++) {
+      try {
+        console.log(`Minting NFT ${i + 1} of ${mintAmount}...`);
+        
+        // Wait a small delay between mints to prevent rate limiting
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        const mintResult = await this.mintSingleNFT();
+        results.push(mintResult);
+        
+        if (mintResult.success) {
+          totalMinted++;
+          console.log(`Successfully minted NFT ${i + 1}/${mintAmount}. Signature: ${mintResult.signature}`);
+        } else {
+          errors.push(`Mint ${i + 1} failed: ${mintResult.error}`);
+          console.error(`Failed to mint NFT ${i + 1}:`, mintResult.error);
+        }
+        
+      } catch (error: any) {
+        const errorMessage = error.message || error.toString() || 'Unknown error';
+        errors.push(`Mint ${i + 1} failed: ${errorMessage}`);
+        results.push({
+          success: false,
+          error: errorMessage
+        });
+        console.error(`Error minting NFT ${i + 1}:`, error);
+      }
+    }
+
+    const overallSuccess = totalMinted > 0;
+    
+    console.log(`Multi-mint completed. Total minted: ${totalMinted}/${mintAmount}`);
+    if (errors.length > 0) {
+      console.log('Errors encountered:', errors);
+    }
+
+    return {
+      success: overallSuccess,
+      results,
+      totalMinted,
+      errors
+    };
   }
 
   getCandyMachineInfo(): CandyMachineInfo | null {
