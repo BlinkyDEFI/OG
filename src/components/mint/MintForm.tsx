@@ -55,6 +55,13 @@ export const MintForm: React.FC<MintFormProps> = ({
         Cost per mint: {Number(TOKEN_AMOUNT) / 1_000_000} BLINKY
       </div>
       
+      {/* Mint confirmation info */}
+      <div className="p-3 bg-gray-800 rounded-md border border-gray-700">
+        <p className="text-xs text-gray-400 text-center">
+          Each NFT requires individual wallet confirmation. Confirmations appear sequentially - if you don't see the next prompt, check your wallet notifications.
+        </p>
+      </div>
+      
       {/* Mint button */}
       <Button
         onClick={handleMintClick}
