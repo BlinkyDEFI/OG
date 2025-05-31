@@ -12,7 +12,8 @@ import {
   transactionBuilder,
   some,
   publicKey as umiPublicKey,
-  unwrapOption
+  unwrapOption,
+  sol
 } from '@metaplex-foundation/umi';
 import { TokenStandard } from '@metaplex-foundation/mpl-token-metadata';
 import { 
@@ -85,6 +86,16 @@ export class CandyMachineService {
     try {
       console.log('Starting single NFT mint process');
       
+      // Check SOL balance before minting
+      const balance = await this.umi.rpc.getBalance(this.umi.identity.publicKey);
+      console.log('Current SOL balance:', balance.basisPoints.toString());
+      
+      // Ensure minimum SOL for transaction fees (0.01 SOL = 10,000,000 lamports)
+      const minimumSolRequired = sol(0.01).basisPoints;
+      if (balance.basisPoints < minimumSolRequired) {
+        throw new Error(`Insufficient SOL balance. Need at least 0.01 SOL for transaction fees. Current: ${balance.basisPoints / 1_000_000_000} SOL`);
+      }
+      
       // Build mint arguments for token payment
       let mintArgs: Partial<DefaultGuardSetMintArgs> = {};
 
@@ -112,9 +123,9 @@ export class CandyMachineService {
       const nftMint = generateSigner(this.umi);
       console.log('Generating single NFT:', nftMint.publicKey.toString());
 
-      // Build transaction with compute unit instructions for single mint
+      // Build transaction with lower compute unit limit to reduce fees
       const builder = transactionBuilder()
-        .add(setComputeUnitLimit(this.umi, { units: 800_000 }))
+        .add(setComputeUnitLimit(this.umi, { units: 750_000 }))
         .add(
           mintV2(this.umi, {
             candyMachine: this.candyMachine.publicKey,
@@ -128,12 +139,17 @@ export class CandyMachineService {
 
       console.log('Sending single NFT transaction for wallet approval...');
       
+      // Focus window to bring wallet to front
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      
       // Send transaction with proper configuration
       const result = await builder.sendAndConfirm(this.umi, {
         confirm: { commitment: 'confirmed' },
         send: { 
-          skipPreflight: false,
-          maxRetries: 3
+          skipPreflight: true, // Skip preflight to reduce chances of timeout
+          maxRetries: 1 // Reduce retries to prevent multiple popups
         }
       });
 
@@ -186,13 +202,32 @@ export class CandyMachineService {
     const errors: string[] = [];
     let totalMinted = 0;
 
+    // Check total SOL balance upfront
+    const balance = await this.umi.rpc.getBalance(this.umi.identity.publicKey);
+    const estimatedFeePerMint = sol(0.01).basisPoints; // Estimate 0.01 SOL per mint
+    const totalEstimatedFees = estimatedFeePerMint * mintAmount;
+    
+    console.log(`SOL balance: ${balance.basisPoints / 1_000_000_000} SOL`);
+    console.log(`Estimated fees for ${mintAmount} mints: ${totalEstimatedFees / 1_000_000_000} SOL`);
+    
+    if (balance.basisPoints < totalEstimatedFees) {
+      throw new Error(`Insufficient SOL for ${mintAmount} mints. Need approximately ${totalEstimatedFees / 1_000_000_000} SOL for fees. Current: ${balance.basisPoints / 1_000_000_000} SOL`);
+    }
+
     for (let i = 0; i < mintAmount; i++) {
       try {
-        console.log(`Minting NFT ${i + 1} of ${mintAmount}...`);
+        console.log(`Preparing to mint NFT ${i + 1} of ${mintAmount}...`);
         
-        // Wait a small delay between mints to prevent rate limiting
+        // Focus window before each mint to ensure wallet popup appears on top
+        if (typeof window !== 'undefined') {
+          window.focus();
+          console.log('Window focused for mint', i + 1);
+        }
+        
+        // Wait a moment between mints to prevent wallet confusion
         if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log('Waiting 2 seconds before next mint...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
         
         const mintResult = await this.mintSingleNFT();
@@ -204,6 +239,12 @@ export class CandyMachineService {
         } else {
           errors.push(`Mint ${i + 1} failed: ${mintResult.error}`);
           console.error(`Failed to mint NFT ${i + 1}:`, mintResult.error);
+          
+          // If it's a SOL balance error, stop the process
+          if (mintResult.error?.includes('Insufficient SOL') || mintResult.error?.includes('insufficient funds')) {
+            console.log('Stopping multi-mint due to insufficient SOL');
+            break;
+          }
         }
         
       } catch (error: any) {
@@ -214,6 +255,12 @@ export class CandyMachineService {
           error: errorMessage
         });
         console.error(`Error minting NFT ${i + 1}:`, error);
+        
+        // If it's a SOL balance error, stop the process
+        if (errorMessage.includes('Insufficient SOL') || errorMessage.includes('insufficient funds')) {
+          console.log('Stopping multi-mint due to insufficient SOL');
+          break;
+        }
       }
     }
 
